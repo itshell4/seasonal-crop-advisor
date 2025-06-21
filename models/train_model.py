@@ -26,7 +26,7 @@ accuracy = accuracy_score(y_test, y_pred)
 print(f"✅ Model trained successfully! Accuracy: {accuracy:.2f}")
 
 # Save the trained model
-with open('model/crop_recommendation_model.pkl', 'wb') as f:
+with open('models/crop_recommendation_model.pkl', 'wb') as f:
     pickle.dump(model, f)
 
 print("✅ Model saved as 'model/crop_recommendation_model.pkl'")
