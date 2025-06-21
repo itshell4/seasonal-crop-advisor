@@ -6,39 +6,59 @@ import geocoder
 
 # ----------------------------
 # 🔑 Your OpenWeatherMap API Key
-API_KEY = "6fe290f8f8c522d4991273dc3c3d02a9"  
+API_KEY = "6fe290f8f8c522d4991273dc3c3d02a9"
+
 # ----------------------------
 
-# 🌐 Get user location using IP
-g = geocoder.ip('me')
-lat, lon = g.latlng if g.latlng else (26.1445, 91.7362)  # Default: Guwahati
-
-# 🛰️ Get weather data from OpenWeatherMap
-def get_weather_data(lat, lon, api_key):
+# 🌐 Get weather using city name
+def get_weather_by_city(city, api_key):
     try:
-        url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}&units=metric"
+        url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
         response = requests.get(url)
         data = response.json()
-
         temperature = data['main']['temp']
         humidity = data['main']['humidity']
-        rainfall = data.get('rain', {}).get('1h', 0)  # in mm
+        rainfall = data.get('rain', {}).get('1h', 0)
         return temperature, humidity, rainfall
     except:
-        return 25.0, 60.0, 100.0  # Fallback values
+        return 25.0, 60.0, 100.0
 
-# 🎯 Load model
+# 🛰️ Get weather using IP-based location
+def get_weather_by_ip(api_key):
+    try:
+        g = geocoder.ip('me')
+        lat, lon = g.latlng if g.latlng else (26.1445, 91.7362)
+        url = f"http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}&units=metric"
+        response = requests.get(url)
+        data = response.json()
+        temperature = data['main']['temp']
+        humidity = data['main']['humidity']
+        rainfall = data.get('rain', {}).get('1h', 0)
+        return temperature, humidity, rainfall
+    except:
+        return 25.0, 60.0, 100.0
+
+# 🎯 Load ML model
 with open('models/crop_recommendation_model.pkl', 'rb') as f:
     model = pickle.load(f)
 
 # 🎨 UI setup
 st.set_page_config(page_title="Crop Advisor 🌾", layout="centered")
 st.title("🌿 AI-Based Seasonal Crop Advisor")
-st.markdown("Get smart crop recommendations based on your soil and weather conditions.")
+st.markdown("Get smart crop recommendations based on your soil and current weather.")
 
-# 🌤️ Get real-time weather
-temperature, humidity, rainfall = get_weather_data(lat, lon, API_KEY)
-st.success("📡 Weather auto-fetched for your location!")
+# 📍 City or Auto Location
+st.markdown("---")
+use_manual = st.checkbox("📍 Enter city manually (override GPS)", value=False)
+
+if use_manual:
+    city = st.text_input("Enter City Name", value="Guwahati")
+    if city:
+        temperature, humidity, rainfall = get_weather_by_city(city, API_KEY)
+        st.success(f"✅ Weather fetched for **{city}**")
+else:
+    temperature, humidity, rainfall = get_weather_by_ip(API_KEY)
+    st.success("📡 Weather auto-fetched using your IP location")
 
 # 📥 Input form
 with st.form("crop_form"):
@@ -64,13 +84,14 @@ if submit:
     st.markdown("---")
     st.markdown(f"### ✅ Recommended Crop: **{crop_name}**")
 
-    # (Optional) Description card
+    # (Optional) Crop Descriptions
     crop_descriptions = {
-        "rice": "🌾 Grows best in warm, humid regions with standing water.",
-        "wheat": "🌿 Prefers cool climates with loamy soil.",
-        "maize": "🌽 Requires moderate rainfall and warm weather.",
-        "cotton": "🧵 Needs sunny conditions and well-drained soil.",
-        # Add more descriptions as needed
+        "rice": "🌾 Grows well in warm, humid conditions with plenty of water.",
+        "wheat": "🌿 Best in cool climates with loamy soil.",
+        "maize": "🌽 Requires warm weather and moderate rainfall.",
+        "cotton": "🧵 Grows in black soil and sunny conditions.",
+        "banana": "🍌 Loves rich soil and humid environments.",
+        # Add more as needed...
     }
-    desc = crop_descriptions.get(prediction.lower(), "No description available.")
+    desc = crop_descriptions.get(prediction.lower(), "Crop description not available.")
     st.info(desc)
